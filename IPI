@@ -1,0 +1,96 @@
+# OCP-on-OSP
+**Openshift on Openstack Installation - Installer Provisioned Method**
+
+**Versions**
+Openstack 16.2
+Openshift 4.11
+
+**Openstack deployment requirements**
+
+1. Compute node
+
+Min 80GB RAM, 20 vcpus, 500 GB Disk
+
+2. Controller nodes and Storage node requirements should be as per document
+
+https://access.redhat.com/documentation/en-us/red_hat_openstack_platform/16.2/html-single/director_installation_and_usage/index#controller-node-requirements
+
+3. Enable octavia support on openstack 
+
+Include file "/usr/share/openstack-tripleo-heat-templates/environments/services/octavia.yaml" in your openstack deployment command.
+
+**Creating Openstack resources for hosting OCP**
+
+1. Create a flavor, It will be used by the OCP machines
+
+# openstack flavor create --ram 16384 --disk 30 --vcpus 10 m1.large
+
+2. Create a Network, Subnet and a Floating IP (FIP) address for external access to the OpenShift Container Platform API, cluster applications, and the bootstrap process.
+
+# openstack network create --external --provider-network-type flat --provider-physical-network datacentre public
+
+# openstack subnet create --network public --subnet-range 10.0.0.0/16 sub-public
+
+# openstack floating ip create public
+
+3. Creating a swift operator role
+
+We are considering creating and using a local repository i.e undercloud. For that purpose we have decided to use the local image repo for openshift as well.
+
+By default ocp will use default storage from openstack i.e swift which is called as the object storage
+
+In order to use this swift object stroage we have to create a swiftoperator user account role. It is used as the default backend for the OpenShift Container Platform image registry.
+
+# openstack role add --user admin --project admin swiftoperator
+
+# openstack object store account set --property Temp-URL-Key=superkey
+
+4. Openshift uses openstack resources, For that purpose we need to set quotas. (-1 stands Infinity)
+
+# openstack quota set --secgroups -1 --secgroup-rules -1 --cores -1 --ram -1 --gigabytes -1 --subnets -1 --floating-ips -1 --networks -1 --ports -1 admin
+
+5. We need to have a keypair which we can use for access our machines or for debug purpose while installting.
+
+You can use this key to SSH into the master nodes as the user core. When you deploy the cluster, the key is added to the core user’s ~/.ssh/authorized_keys list
+
+# openstack keypair create --public-key .ssh/id_rsa.pub stack
+
+
+**Openshift Installation - IPI**
+
+
+1. The next all we need to do is download the openshift installer, CLI tools and pull secret from Red Hat OpenShift Cluster Manager into the 'ocp' dir.
+
+https://console.redhat.com/openshift/install
+
+# mkdir ocp
+# tar -xf openshift-client-linux.tar.gz
+# tar -xf openshift-install-linux.tar.gz
+# mkdir try1 
+
+2. Creating install-config file
+
+# ./openshift-install create install-config --dir=try1
+
+Take a backup of the install-config file and edit as per your requiements. Make sure you add proper domain name and DNS, Also make sure that Network IP's are of different range
+
+3. If you do not control the DNS server, you can access the cluster by adding the cluster domain names such as the following to your /etc/hosts file
+
+~~~
+10.0.0.12 api.ocp.dev.lab   // floating api ip
+~~~
+
+4. Creating Cluster
+
+# ./openshift-install create cluster --dir=try1 --log-level=debug
+
+It takes ~30 mins for the cluster installation. Once the cluster is successfully installed you can export the kubconfig file in order to execute use 'oc' commands
+
+$ export KUBECONFIG=<installation_directory>/auth/kubeconfig
+
+5. Verify cluster installation
+
+$ oc get nodes
+$ oc get clusterversion
+$ oc get clusteroperator
+$ oc get pods -A
