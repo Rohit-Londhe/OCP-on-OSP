@@ -1,0 +1,43 @@
+#### SAMPLE INSTALL_CONFIG FILE ####
+
+apiVersion: v1
+baseDomain: dev.lab
+compute:
+- architecture: amd64
+  hyperthreading: Enabled
+  name: worker
+  platform: {}
+  replicas: 1
+controlPlane:
+  architecture: amd64
+  hyperthreading: Enabled
+  name: master
+  platform: {}
+  replicas: 3
+metadata:
+  creationTimestamp: null
+  name: ocp
+networking:
+  clusterNetwork:
+  - cidr: 13.128.x.x/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 12.0.x.x/16
+  networkType: OpenShiftSDN
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  openstack:
+    apiFloatingIP: 10.0.0.12
+    apiVIP: 12.0.0.x
+    cloud: overcloud
+    defaultMachinePlatform:
+      type: m1.large
+    externalDNS:
+      - 10.75.5.x
+      - 10.0.0.1
+    externalNetwork: nova
+    ingressVIP: 12.0.0.x
+publish: External
+pullSecret: 
+sshKey: 
